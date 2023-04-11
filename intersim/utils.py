@@ -47,7 +47,7 @@ def get_svt(loc: int = 0, track: int = 0, base: str = DATASET_BASE, deg=20):
     """
     assert loc >= 0 and loc < len(LOCATIONS), "Invalid location index {} not in [0,{}]".format(loc,len(LOCATIONS)-1)
     assert track >= 0 and track < MAX_TRACKS, "Invalid location index {} not in [0,{}]".format(track,MAX_TRACKS-1)
-    path = opj(base, 'datasets','trackfiles',LOCATIONS[loc],'vehicle_tracks_%03i.csv'%(track))
+    path = opj(base, 'datasets','trackfiles',LOCATIONS[loc],'vehicle_tracks_%04i.csv'%(track))
     df = pd.read_csv(path)
     stv = df_to_stackedvehicletraj(df, deg=deg)
     return stv, path
