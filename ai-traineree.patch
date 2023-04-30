@@ -1,0 +1,115 @@
+diff --git a/ai_traineree/agents/ddpg.py b/ai_traineree/agents/ddpg.py
+index 19b2eae..2b00b30 100644
+--- a/ai_traineree/agents/ddpg.py
++++ b/ai_traineree/agents/ddpg.py
+@@ -148,11 +148,11 @@ class DDPGAgent(AgentBase):
+ 
+     @cached_property
+     def action_min(self):
+-        return to_tensor(self.action_space.low)
++        return to_tensor(self.action_space.low).to(self.device)
+ 
+     @cached_property
+     def action_max(self):
+-        return to_tensor(self.action_space.high)
++        return to_tensor(self.action_space.high).to(self.device)
+ 
+     @torch.no_grad()
+     def act(self, experience: Experience, noise: float = 0.0) -> Experience:
+@@ -329,7 +329,7 @@ class DDPGAgent(AgentBase):
+         torch.save(agent_state, path)
+ 
+     def load_state(self, *, path: Optional[str] = None, agent_state: Optional[dict] = None):
+-        if path is None and agent_state:
++        if path is None and agent_state is None:
+             raise ValueError("Either `path` or `agent_state` must be provided to load agent's state.")
+         if path is not None and agent_state is None:
+             agent_state = torch.load(path)
+diff --git a/ai_traineree/multi_agents/maddpg.py b/ai_traineree/multi_agents/maddpg.py
+index 84e5766..3ad2912 100644
+--- a/ai_traineree/multi_agents/maddpg.py
++++ b/ai_traineree/multi_agents/maddpg.py
+@@ -22,7 +22,7 @@ class MADDPGAgent(MultiAgentType):
+ 
+     model = "MADDPG"
+ 
+-    def __init__(self, obs_space: DataSpace, action_space: DataSpace, num_agents: int, **kwargs):
++    def __init__(self, obs_space: DataSpace, action_space: DataSpace, num_agents: int, actor_lr = 0.001, critic_lr = 0.001, **kwargs):
+         """Initiation of the Multi Agent DDPG.
+ 
+         All keywords are also passed to DDPG agents.
+@@ -263,7 +263,7 @@ class MADDPGAgent(MultiAgentType):
+         agents_state = self.get_state()
+         torch.save(agents_state, path)
+ 
+-    def load_state(self, *, path: Optional[str] = None, agent_state: Optional[dict] = None) -> None:
++    def load_state(self, path, agent_state: Optional[dict] = None) -> None:
+         """Loads the state into the Multi Agent.
+ 
+         The state can be provided either via path to a file that contains the state,
+diff --git a/ai_traineree/runners/multiagent_env_runner.py b/ai_traineree/runners/multiagent_env_runner.py
+index ece7fa5..fd8f0db 100644
+--- a/ai_traineree/runners/multiagent_env_runner.py
++++ b/ai_traineree/runners/multiagent_env_runner.py
+@@ -512,6 +512,8 @@ class MultiAgentCycleEnvRunner:
+         gif_every_episodes: Optional[int] = None,
+         checkpoint_every=200,
+         force_new=False,
++        render_path=None,
++        render_every_n=1000,
+     ) -> List[Dict[str, RewardType]]:
+         """
+         Evaluates the Multi Agent in the environment.
+@@ -529,7 +531,6 @@ class MultiAgentCycleEnvRunner:
+         self.reset()
+         if not force_new:
+             self.load_state(self.model_path)
+-
+         mean_scores = []
+         epsilons = []
+ 
+@@ -571,6 +572,9 @@ class MultiAgentCycleEnvRunner:
+                 self.save_state(self.model_path)
+                 self.multi_agent.save_state(f"{self.model_path}_agent.net")
+                 break
++            
++            if self.episode % render_every_n == 0:
++                self.task.env.env.env.render_anim(f"{render_path}_{self.episode}")
+ 
+             if self.episode % checkpoint_every == 0:
+                 self.save_state(self.model_path)
+@@ -710,4 +714,10 @@ class MultiAgentCycleEnvRunner:
+ 
+         self.logger.info("Loading saved agent state: %s/%s.agent", self.state_dir, state_name)
+         self.multi_agent.load_state(f"{self.state_dir}/{state_name}.agent")
+-        self.multi_agent.loss = state.get("loss", 0)
++
++        loss = state.get("loss", 0)
++        for loss_name, loss_value in loss.items():
++            if "_actor" in loss_name:
++                self.multi_agent._loss_actor[loss_name.replace("_actor", "")] = loss_value
++        self.multi_agent._loss_critic = loss['critic']
++        #self.multi_agent.loss = state.get("loss", 0)
+diff --git a/requirements.txt b/requirements.txt
+index b184fc1..ec8a6f7 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -2,4 +2,4 @@
+ numpy>=1.19.0  # Note: >= 1.9.0, < 1.21 have security issue
+ torch>=1.9.0
+ jsons>=1.4
+-gym~=0.19.0
++gym~=0.21.0
+diff --git a/setup.cfg b/setup.cfg
+index 53ce97c..c326c5c 100644
+--- a/setup.cfg
++++ b/setup.cfg
+@@ -23,7 +23,7 @@ install_requires =
+     numpy>=1.19.0  # Note: >= 1.9.0, < 1.21 have security issue
+     torch>=1.9.0
+     jsons>=1.4
+-    gym~=0.19.0
++    gym~=0.21.0
+ 
+ [options.extras_require]
+ plot = matplotlib
