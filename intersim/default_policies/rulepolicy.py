@@ -2,7 +2,7 @@
 
 import torch
 from torch import nn
-from intersim.policy import Policy
+from intersim.default_policies.policy import Policy
 import numpy as np
 
 class RulePolicy(Policy, nn.Module):

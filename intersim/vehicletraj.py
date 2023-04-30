@@ -8,7 +8,7 @@ import random
 
 class StackedVehicleTraj:
 
-	def __init__(self, lengths, widths, t0, s, v, xpoly, ypoly, dt=0.1):
+	def __init__(self, lengths, widths, t0, s, v, xpoly, ypoly, xlist, ylist, psilist, psidotlist, masklist, dt=0.1):
 		"""
 		Stacked vehicle trajectories as polynomials.
 		Args:
@@ -24,6 +24,13 @@ class StackedVehicleTraj:
 
 		self._lengths = lengths
 		self._widths = widths
+
+		self._xlist = xlist
+		self._ylist = ylist
+		self._psilist = psilist
+		self._psidotlist = psidotlist
+
+		self._masks = torch.stack(masklist)
 
 		self._nv = len(lengths)
 		self._t0 = t0

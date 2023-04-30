@@ -45,7 +45,7 @@ class InteractionSimulator(gym.Env):
     metadata = {'render.modes': ['live','file','post']}
 
     def __init__(self, 
-                 loc: int = 0,
+                 scenario_name: str = "DR_USA_Intersection_MA",
                  track: int = 0,
                  svt: StackedVehicleTraj = None, 
                  map_path: str = None, 
@@ -82,14 +82,14 @@ class InteractionSimulator(gym.Env):
 
         # Get stacked vehicle trajectory
         if not svt:
-            svt, filename = get_svt(loc, track)
+            svt, filename = get_svt(scenario_name, track)
             logging.info('Vehicle Trajectory Paths: {}'.format(filename))
         else:
             logging.info('Custom Vehicle Trajectory Paths')
             
         # Get map path
         if not map_path:
-            map_path = get_map_path(loc)
+            map_path = get_map_path(scenario_name)
         logging.info('Map Path: {}'.format(map_path))
         
         # shuffle tracks

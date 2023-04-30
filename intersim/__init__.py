@@ -17,3 +17,8 @@ register(
     entry_point='intersim.envs:Intersimple',
     order_enforce=False,
 )
+register(
+    id='multisim-v0',
+    entry_point='intersim.envs:MultiSim',
+    order_enforce=False,
+)

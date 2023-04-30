@@ -20,8 +20,8 @@ LOCATIONS = [
     'DR_USA_Roundabout_EP',
     'DR_USA_Roundabout_SR'
 ]
-MAX_TRACKS=5
-def get_map_path(loc: int = 0, base: str = DATASET_BASE) -> str:
+MAX_TRACKS = 1000
+def get_map_path(scenario_name: str, base: str = DATASET_BASE) -> str:
     """
     Get path to .osm map file from location index
     Args:
@@ -30,10 +30,10 @@ def get_map_path(loc: int = 0, base: str = DATASET_BASE) -> str:
     Returns:
         osm (str): path to .osm map file
     """
-    assert loc >= 0 and loc < len(LOCATIONS), "Invalid location index {} not in [0,{}]".format(loc,len(LOCATIONS)-1)
-    return opj(base, 'datasets','maps',LOCATIONS[loc]+'.osm')
+    #assert loc >= 0 and loc < len(LOCATIONS), "Invalid location index {} not in [0,{}]".format(loc,len(LOCATIONS)-1)
+    return opj(base, 'datasets', 'maps', scenario_name+'.osm')
 
-def get_svt(loc: int = 0, track: int = 0, base: str = DATASET_BASE, deg=20):
+def get_svt(scenario_name: str, track: int = 0, base: str = DATASET_BASE, deg=20, controlled_agents=None, blackbox_agents=None):
     """
     Load stacked vehicle trajectory from location and track indices
     Args:
@@ -45,10 +45,12 @@ def get_svt(loc: int = 0, track: int = 0, base: str = DATASET_BASE, deg=20):
         svt (StackedVehicleTraj): stacked vehicle traj to base trajectories off of
         path (str): path to data used
     """
-    assert loc >= 0 and loc < len(LOCATIONS), "Invalid location index {} not in [0,{}]".format(loc,len(LOCATIONS)-1)
-    assert track >= 0 and track < MAX_TRACKS, "Invalid location index {} not in [0,{}]".format(track,MAX_TRACKS-1)
-    path = opj(base, 'datasets','trackfiles',LOCATIONS[loc],'vehicle_tracks_%04i.csv'%(track))
+    #assert loc >= 0 and loc < len(LOCATIONS), "Invalid location index {} not in [0,{}]".format(loc,len(LOCATIONS)-1)
+    #assert track >= 0 and track < MAX_TRACKS, "Invalid location index {} not in [0,{}]".format(track,MAX_TRACKS-1)
+    path = opj(base, 'datasets', 'trackfiles', scenario_name, 'vehicle_tracks_%04i.csv'%(track))
     df = pd.read_csv(path)
+    if controlled_agents is not None and blackbox_agents is not None:
+        df = df[df.track_id.isin(controlled_agents + blackbox_agents)]
     stv = df_to_stackedvehicletraj(df, deg=deg)
     return stv, path
 
@@ -111,9 +113,13 @@ def df_to_stackedvehicletraj(df, deg=20):
     xlist = []
     ylist = []
     vlist = []
+    psilist = []
+    psidotlist = []
+    masklist = []
+    full_size = df.frame_id.max()
 
-    for tid in df.track_id.unique():
-
+    track_ids = np.sort(df.track_id.unique())
+    for tid in track_ids:
         df_ = df.loc[df.track_id == tid]
 
         lengths.append(df_.length.values[0])
@@ -133,6 +139,20 @@ def df_to_stackedvehicletraj(df, deg=20):
 
         s = np.cumsum(ds)
 
+        psi = df_.psi_rad.values
+        psi = torch.tensor(psi)
+        psilist.append(psi)
+        psidot = df_.psi_rad.diff().values
+        psidot[0] = 0.0
+        psidot = torch.tensor(psidot)
+        psidotlist.append(psidot)
+
+        # Create a mask of full size indicating which timesteps we have data
+        frame_ids = torch.tensor(df_.frame_id.values)
+        mask = torch.zeros(full_size, dtype=int)
+        mask[frame_ids-1] = 1
+        masklist.append(mask)
+
         # to tensors
         x = torch.tensor(x)
         y = torch.tensor(y)
@@ -149,11 +169,11 @@ def df_to_stackedvehicletraj(df, deg=20):
     lengths = torch.tensor(lengths)
     widths = torch.tensor(widths)
 
-    xpoly, ypoly = polyfit_sxy(slist,xlist,ylist, deg=deg)
+    xpoly, ypoly = polyfit_sxy(slist, xlist, ylist, deg=deg)
 
     dt = df_.timestamp_ms.diff().mean()/1000
 
-    return StackedVehicleTraj(lengths, widths, t0, slist, vlist, xpoly, ypoly, dt=dt)
+    return StackedVehicleTraj(lengths, widths, t0, slist, vlist, xpoly, ypoly, xlist, ylist, psilist, psidotlist, masklist, dt=dt)
 
 
 def polyfit_sxy(s, x, y, deg=20):

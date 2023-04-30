@@ -135,3 +135,28 @@ def collision_matrix(x, lengths, widths):
                 c_mat[nni_t[i],nni_t[j]] = 1
                 c_mat[nni_t[j],nni_t[i]] = 1
     return c_mat
+
+def minSheepDistances(x, lengths, widths, controlMask):
+    """
+    Generate collision matrix at a state.
+    Args:
+        x (torch.tensor): (nv,5) vehicle state
+        lengths (torch.tensor): (nv,) vehicle lengths
+        widths (torch.tensor): (nv,) vehicle lengths
+    Returns
+        c_mat (torch.tensor): (nv, nv) collision tensor 
+            where [i,j] is True if i is colliding with j
+
+    """
+
+    nv = len(lengths)
+    minDistance = np.inf
+    polys_t, nni_t = states_to_polygons(x[~controlMask], lengths[~controlMask], widths[~controlMask])#if this doesnt work, try converting to torch tensors
+    nv = len(polys_t)
+    for i in range(1,nv):
+        for j in range(i):
+            d = polys_t[i].distance(polys_t[j])
+            if  d < minDistance:
+                minDistance = d
+    return minDistance
+

@@ -7,3 +7,4 @@ from intersim.envs.intersimple import IntersimpleReward, IntersimpleTargetSpeed,
 from intersim.envs.intersimple import IntersimpleRasterized, NRasterized, NRasterizedRandomAgent, NRasterizedRoute, NRasterizedIncrementingAgent, \
                                       NRasterizedRouteRandomAgent, NRasterizedRouteIncrementingAgent, NRasterizedRouteRandomAgentLocation, \
                                       IntersimpleLidar, IntersimpleLidarFlat, IntersimpleLidarFlatRandom, IntersimpleLidarFlatIncrementingAgent
+from intersim.envs.multisim import MultiSim
